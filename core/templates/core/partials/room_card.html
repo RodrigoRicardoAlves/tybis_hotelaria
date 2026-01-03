@@ -1,0 +1,41 @@
+<div class="card h-100 shadow-sm border-0" id="room-card-{{ item.room.id }}">
+
+    <div class="card-header border-0 d-flex justify-content-between align-items-center py-2 {{ item.status_class }}">
+        <span class="fw-bold fs-5">
+            <i class="bi {{ item.status_icon }}"></i> Quarto {{ item.room.number }}
+        </span>
+
+        <div class="d-flex gap-2 align-items-center">
+            {% if item.room.climate == 'AC' %}
+                <i class="bi bi-snow" title="Ar Condicionado" style="opacity: 0.6;"></i>
+            {% else %}
+                <i class="bi bi-fan" title="Ventilador" style="opacity: 0.6;"></i>
+            {% endif %}
+
+            {% if request.user.is_staff %}
+            <button class="btn btn-sm btn-link text-inherit p-0 ms-2"
+                    style="color: inherit; opacity: 0.7;"
+                    hx-post="{% url 'toggle_maintenance' item.room.id %}"
+                    hx-confirm="Alterar status de manutenção do Quarto {{ item.room.number }}?"
+                    title="Alternar Manutenção">
+                <i class="bi bi-gear-fill"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        {% if item.room.is_maintenance %}
+            <div class="text-center text-danger py-5 opacity-50">
+                <i class="bi bi-cone-striped display-6"></i>
+                <p class="fw-bold mt-2 mb-0">EM MANUTENÇÃO</p>
+            </div>
+        {% else %}
+            <ul class="list-group list-group-flush">
+                {% for bed_info in item.beds %}
+                    {% include 'core/partials/bed_card.html' with bed=bed_info.bed res=bed_info.res %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+</div>

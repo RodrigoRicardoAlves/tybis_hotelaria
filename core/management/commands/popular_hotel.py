@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from core.models import Room, Bed
+from core.models import Room, Bed, Company
 
 
 class Command(BaseCommand):
@@ -7,6 +7,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.WARNING('Iniciando processo de população...'))
+
+        Company.objects.get_or_create(name="Particular")
+        self.stdout.write('Empresa "Particular" garantida.')
 
         total_criados = 0
         total_existentes = 0

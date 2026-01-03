@@ -9,22 +9,33 @@
 
         <div class="mb-3">
             <label class="form-label">Nome do Hóspede</label>
-            <input type="text" name="name" class="form-control" required>
+            <input type="text" name="name" class="form-control" required autofocus>
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Empresa</label>
-            <select name="company" class="form-select" required
-                    hx-get="{% url 'htmx_available_beds' %}"
-                    hx-target="#bed-select"
-                    hx-trigger="change">
-                <option value="" selected disabled>-- Selecione a Empresa --</option>
-                {% for company in form.fields.company.queryset %}
-                    <option value="{{ company.id }}">{{ company.name }}</option>
-                {% endfor %}
-            </select>
-            <div class="form-text small">
-                <a href="{% url 'company_create' %}" target="_blank">Cadastrar nova empresa?</a>
+            <label class="form-label">Empresa / Responsável</label>
+
+            <div class="input-group">
+                <select name="company" id="company-select" class="form-select" required
+                        hx-get="{% url 'htmx_available_beds' %}"
+                        hx-target="#bed-select"
+                        hx-trigger="change">
+                    <option value="" selected disabled>-- Selecione a Empresa --</option>
+                    {% for company in form.fields.company.queryset %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <button type="button" class="btn btn-outline-secondary" onclick="setParticular()">
+                    <i class="bi bi-person-fill"></i> Particular
+                </button>
+            </div>
+
+            <div class="form-text small d-flex justify-content-between">
+                <span>Define a regra de alocação de quarto.</span>
+                <a href="{% url 'company_create' %}" target="_blank" class="text-decoration-none">
+                    <i class="bi bi-plus-circle"></i> Nova Empresa
+                </a>
             </div>
         </div>
 
@@ -59,3 +70,26 @@
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
     <button type="submit" form="new-reservation-form" class="btn btn-success">Confirmar</button>
 </div>
+
+<script>
+    function setParticular() {
+        const select = document.getElementById('company-select');
+        let found = false;
+
+        // Procura a opção que tem o texto "Particular" (case insensitive)
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].text.toLowerCase().includes('particular')) {
+                select.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            // Dispara o evento 'change' manualmente para o HTMX acordar e buscar as camas
+            select.dispatchEvent(new Event('change'));
+        } else {
+            alert('A empresa "Particular" ainda não foi cadastrada no sistema. Por favor, cadastre-a na tela de Empresas.');
+        }
+    }
+</script>
