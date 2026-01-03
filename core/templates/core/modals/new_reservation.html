@@ -4,49 +4,52 @@
 </div>
 
 <div class="modal-body">
-    <form id="new-reservation-form"
-          hx-post="{% url 'create_reservation' %}"
-          hx-target="body"> {% csrf_token %}
+    <form id="new-reservation-form" hx-post="{% url 'create_reservation' %}" hx-target="body">
+        {% csrf_token %}
 
         <div class="mb-3">
-            <label class="form-label">Nome Completo</label>
+            <label class="form-label">Nome do Hóspede</label>
             <input type="text" name="name" class="form-control" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Empresa</label>
+            <select name="company" class="form-select" required
+                    hx-get="{% url 'htmx_available_beds' %}"
+                    hx-target="#bed-select"
+                    hx-trigger="change">
+                <option value="" selected disabled>-- Selecione a Empresa --</option>
+                {% for company in form.fields.company.queryset %}
+                    <option value="{{ company.id }}">{{ company.name }}</option>
+                {% endfor %}
+            </select>
+            <div class="form-text small">
+                <a href="{% url 'company_create' %}" target="_blank">Cadastrar nova empresa?</a>
+            </div>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">Empresa</label>
-                <input type="text" name="company" class="form-control" required
-                       placeholder="Define a regra de alocação">
-            </div>
-            <div class="col-md-6 mb-3">
                 <label class="form-label">Telefone</label>
                 <input type="text" name="phone" class="form-control">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">CPF</label>
+                <input type="text" name="cpf" class="form-control">
             </div>
         </div>
 
         <div class="mb-3">
             <label class="form-label fw-bold">Selecione o Quarto/Cama</label>
-            <select name="bed_id" class="form-select" required>
-                <option value="" selected disabled>-- Escolha uma cama disponível --</option>
-                {% for bed in beds %}
-                    <option value="{{ bed.id }}">
-                        Quarto {{ bed.room.number }} - Cama {{ bed.name }}
-                        ({{ bed.room.get_climate_display }})
-                    </option>
-                {% empty %}
-                    <option disabled>Nenhuma cama disponível no momento.</option>
-                {% endfor %}
+            <select name="bed_id" id="bed-select" class="form-select" required>
+                <option value="" selected disabled>-- Selecione a Empresa primeiro --</option>
             </select>
-            <div class="form-text">
-                Mostrando apenas camas em quartos vazios ou com mesma empresa.
-            </div>
         </div>
 
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="is_pre" id="isPreCheck">
             <label class="form-check-label" for="isPreCheck">
-                Marcar como Pré-reserva (Bloqueia a vaga)
+                Marcar como Pré-reserva
             </label>
         </div>
     </form>
@@ -54,7 +57,5 @@
 
 <div class="modal-footer">
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-    <button type="submit" form="new-reservation-form" class="btn btn-success">
-        <i class="bi bi-check-lg"></i> Confirmar Reserva
-    </button>
+    <button type="submit" form="new-reservation-form" class="btn btn-success">Confirmar</button>
 </div>

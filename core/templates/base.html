@@ -23,6 +23,16 @@
                 </div>
             {% endif %}
         </div>
+        <div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'dashboard' %}">Mapa</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'company_list' %}">Empresas</a>
+        </li>
+    </ul>
+        </div>
     </nav>
 
     <div class="container-fluid">

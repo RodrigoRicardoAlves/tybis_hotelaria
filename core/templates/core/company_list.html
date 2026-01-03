@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>Empresas Parceiras</h3>
+        <div>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Voltar ao Mapa</a>
+            <a href="{% url 'company_create' %}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Nova Empresa</a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>CNPJ</th>
+                        <th>Contato</th>
+                        <th style="width: 100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for company in companies %}
+                    <tr>
+                        <td class="fw-bold">{{ company.name }}</td>
+                        <td>{{ company.cnpj|default:"-" }}</td>
+                        <td>{{ company.contact|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'company_update' company.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">Nenhuma empresa cadastrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
