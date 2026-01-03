@@ -10,18 +10,46 @@ from .forms import GuestForm
 
 @login_required
 def dashboard(request):
-    """Tela Principal: Monta a tabela de quartos"""
+    """Tela Principal: Monta a tabela de quartos com status calculado"""
     rooms = Room.objects.all().order_by('number')
 
     dashboard_data = []
     for room in rooms:
         beds_data = []
+        has_active = False
+        has_pre = False
+
         for bed in room.beds.all():
             # Pega reserva ativa ou pré-reserva
             res = bed.reservations.filter(status__in=['ACTIVE', 'PRE']).first()
             beds_data.append({'bed': bed, 'res': res})
 
-        dashboard_data.append({'room': room, 'beds': beds_data})
+            if res:
+                if res.status == 'ACTIVE':
+                    has_active = True
+                elif res.status == 'PRE':
+                    has_pre = True
+
+        # LÓGICA DE CORES DO CABEÇALHO (PRIORIDADES)
+        if room.is_maintenance:
+            status_class = 'bg-danger-subtle text-danger-emphasis'  # Manutenção (Vermelho)
+            status_icon = 'bi-cone-striped'
+        elif has_active:
+            status_class = 'bg-primary-subtle text-primary-emphasis'  # Ocupado (Azul)
+            status_icon = 'bi-door-open-fill'
+        elif has_pre:
+            status_class = 'bg-warning-subtle text-warning-emphasis'  # Pré-reserva (Amarelo)
+            status_icon = 'bi-clock-history'
+        else:
+            status_class = 'bg-success-subtle text-success-emphasis'  # Livre (Verde)
+            status_icon = 'bi-door-closed'
+
+        dashboard_data.append({
+            'room': room,
+            'beds': beds_data,
+            'status_class': status_class,
+            'status_icon': status_icon
+        })
 
     return render(request, 'core/dashboard.html', {'dashboard_data': dashboard_data})
 
