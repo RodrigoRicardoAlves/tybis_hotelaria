@@ -1,9 +1,12 @@
 # core/views.py
+import json
+
+from django.db.models.functions import Cast
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, IntegerField
 from .models import Room, Bed, Reservation, Guest
 from .forms import GuestForm
 
@@ -11,7 +14,15 @@ from .forms import GuestForm
 @login_required
 def dashboard(request):
     """Tela Principal: Monta a tabela de quartos com status calculado"""
-    rooms = Room.objects.all().order_by('number')
+
+    # --- ALTERE ESTA PARTE DA CONSULTA ---
+    # Antes era: rooms = Room.objects.all().order_by('number')
+
+    # Agora convertemos o texto '10' para o número 10 na hora de ordenar:
+    rooms = Room.objects.annotate(
+        numero_ordenado=Cast('number', IntegerField())
+    ).order_by('numero_ordenado')
+    # -------------------------------------
 
     dashboard_data = []
     for room in rooms:
@@ -81,11 +92,29 @@ def checkout(request, pk):
 
 @login_required
 def toggle_maintenance(request, pk):
-    """Trava o quarto inteiro"""
+    """Trava o quarto inteiro, mas só se estiver vazio"""
     room = get_object_or_404(Room, pk=pk)
+
+    # Se o quarto NÃO está em manutenção (ou seja, queremos TRAVAR),
+    # precisamos verificar se tem gente dentro.
+    if not room.is_maintenance:
+        has_guests = Reservation.objects.filter(
+            bed__room=room,
+            status__in=['ACTIVE', 'PRE']  # Verifica Ativos e Pré-reservas
+        ).exists()
+
+        if has_guests:
+            # Retorna "Nada" (204) mas com um gatilho de erro no Header
+            response = HttpResponse(status=204)
+            response['HX-Trigger'] = json.dumps({
+                "showAlert": "🚫 Quarto Ocupado! Favor mudar os hóspedes antes de colocar em manutenção."
+            })
+            return response
+
+    # Se estiver vazio ou se estivermos DESTRAVANDO, segue normal
     room.is_maintenance = not room.is_maintenance
     room.save()
-    # O HTMX vai recarregar a página para atualizar o visual do quarto todo
+
     response = HttpResponse(status=204)
     response['HX-Refresh'] = "true"
     return response

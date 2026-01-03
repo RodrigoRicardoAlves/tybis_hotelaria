@@ -11,11 +11,11 @@
             </div>
 
             <div class="small mt-1 d-flex align-items-center flex-wrap gap-2 text-muted">
-                <span><i class="bi bi-building"></i> {{ res.guest.company }}</span>
+                <span title="Empresa"><i class="bi bi-briefcase me-1"></i>{{ res.guest.company }}</span>
 
                 {% if res.has_luggage %}
-                    <span class="badge bg-secondary" title="Mala Guardada">
-                        <i class="bi bi-suitcase-fill"></i>
+                    <span class="badge bg-warning text-dark" title="Mala Guardada">
+                        <i class="bi bi-suitcase-fill"></i> Mala
                     </span>
                 {% endif %}
 
@@ -31,38 +31,41 @@
     </div>
 
     {% if res %}
-    <div class="btn-group btn-group-sm">
-        <button class="btn btn-link text-decoration-none text-secondary p-1"
+    <div class="btn-group btn-group-sm" role="group">
+        <button type="button"
+                class="btn {% if res.has_luggage %}btn-warning{% else %}btn-outline-secondary{% endif %}"
                 hx-post="{% url 'toggle_luggage' res.id %}"
                 hx-target="#bed-{{ bed.id }}"
-                title="Mala">
-            <i class="bi {% if res.has_luggage %}bi-suitcase-fill{% else %}bi-suitcase{% endif %} fs-6"></i>
+                title="Guardar/Retirar Mala">
+            <i class="bi bi-suitcase-lg-fill"></i>
         </button>
 
-        <button class="btn btn-link text-decoration-none text-primary p-1"
+        <button type="button"
+                class="btn btn-outline-primary"
                 hx-get="{% url 'change_room_modal' res.id %}"
                 hx-target="#modal-content"
                 data-bs-toggle="modal" data-bs-target="#mainModal"
                 title="Mudar Quarto">
-            <i class="bi bi-arrow-left-right fs-6"></i>
+            <i class="bi bi-arrow-left-right"></i>
         </button>
 
-        <button class="btn btn-link text-decoration-none text-danger p-1"
+        <button type="button"
+                class="btn btn-outline-danger"
                 hx-post="{% url 'checkout' res.id %}"
                 hx-target="#bed-{{ bed.id }}"
                 hx-confirm="Confirmar saída de {{ res.guest.name }}?"
                 title="Checkout">
-            <i class="bi bi-box-arrow-right fs-6"></i>
+            <i class="bi bi-box-arrow-right"></i>
         </button>
     </div>
     {% else %}
-         <button class="btn btn-sm text-success p-1"
+         <button class="btn btn-sm btn-outline-success"
             hx-get="{% url 'new_reservation_modal' %}"
             hx-target="#modal-content"
             data-bs-toggle="modal"
             data-bs-target="#mainModal"
             title="Reservar">
-            <i class="bi bi-plus-circle fs-5"></i>
+            <i class="bi bi-plus-lg"></i>
          </button>
     {% endif %}
 </li>
