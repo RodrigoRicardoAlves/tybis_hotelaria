@@ -7,6 +7,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models import Q, IntegerField
+from django.views.decorators.http import require_http_methods
+
 from .models import Room, Bed, Reservation, Guest
 from .forms import GuestForm
 
@@ -212,3 +214,57 @@ def change_room(request, pk):
         return response
 
     return HttpResponse("Erro", status=400)
+
+
+# core/views.py (Adicione no final)
+
+@login_required
+def edit_checkin_modal(request, pk):
+    """Abre modal para editar dados antes de confirmar o Check-in"""
+    res = get_object_or_404(Reservation, pk=pk)
+    form = GuestForm(instance=res.guest)  # Traz os dados já preenchidos
+    return render(request, 'core/modals/edit_checkin.html', {'form': form, 'res': res})
+
+
+@login_required
+@require_http_methods(["POST"])
+def confirm_checkin(request, pk):
+    """Salva os dados editados e muda status para ACTIVE"""
+    res = get_object_or_404(Reservation, pk=pk)
+
+    # Atualiza os dados do Hóspede
+    form = GuestForm(request.POST, instance=res.guest)
+    if form.is_valid():
+        form.save()
+
+        # Efetiva o Check-in
+        res.status = 'ACTIVE'
+        res.start_date = timezone.now()  # Atualiza a data de entrada para agora
+        res.add_log(request.user, "Check-in Realizado", "Confirmado via Pré-reserva")
+        res.save()
+
+        response = HttpResponse(status=204)
+        response['HX-Refresh'] = "true"
+        return response
+
+    # Se der erro no form, retorna o modal com erros
+    return render(request, 'core/modals/edit_checkin.html', {'form': form, 'res': res})
+
+
+@login_required
+@require_http_methods(["POST"])
+def cancel_reservation(request, pk):
+    """Exclui a pré-reserva liberando o quarto"""
+    res = get_object_or_404(Reservation, pk=pk)
+
+    # Só permite cancelar se for PRE (segurança)
+    if res.status == 'PRE':
+        # Loga antes de apagar (opcional, se tivesse model de log separado)
+        # Como o log fica na reserva, ele sumirá junto, mas o quarto fica livre.
+        res.delete()
+
+        response = HttpResponse(status=204)
+        response['HX-Refresh'] = "true"
+        return response
+
+    return HttpResponse("Apenas pré-reservas podem ser canceladas aqui.", status=400)

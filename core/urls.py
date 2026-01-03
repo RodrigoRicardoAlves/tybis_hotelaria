@@ -22,4 +22,8 @@ urlpatterns = [
     path('reserva/<int:pk>/trocar/', views.change_room, name='change_room'),
 
     path('quarto/<int:pk>/manutencao/', views.toggle_maintenance, name='toggle_maintenance'),
+
+    path('reserva/<int:pk>/editar-checkin/', views.edit_checkin_modal, name='edit_checkin_modal'),
+    path('reserva/<int:pk>/confirmar/', views.confirm_checkin, name='confirm_checkin'),
+    path('reserva/<int:pk>/cancelar/', views.cancel_reservation, name='cancel_reservation'),
 ]
