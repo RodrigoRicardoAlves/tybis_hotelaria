@@ -27,4 +27,6 @@ urlpatterns = [
     path('reserva/<int:pk>/cancelar/', views.cancel_reservation, name='cancel_reservation'),
 
     path('quarto/<int:pk>/manutencao/', views.toggle_maintenance, name='toggle_maintenance'),
+# Adicione ao urlpatterns
+    path('refeicoes/', views.meal_control, name='meal_control'),
 ]

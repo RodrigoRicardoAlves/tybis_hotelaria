@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Room, Bed, Guest, Reservation
+from .models import Room, Bed, Guest, Reservation, Company
 
 
 # Configuração para editar camas DENTRO da tela do quarto
@@ -13,7 +13,7 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = ('number', 'climate', 'get_beds_count', 'is_maintenance')
     list_filter = ('climate', 'is_maintenance')
     search_fields = ('number',)
-    inlines = [BedInline]  # Adiciona as camas aqui
+    inlines = [BedInline]
 
     def get_beds_count(self, obj):
         return obj.beds.count()
@@ -29,21 +29,32 @@ class BedAdmin(admin.ModelAdmin):
     ordering = ('room', 'name')
 
 
+# --- NOVO: ADMIN DE EMPRESAS ---
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'cnpj', 'contact')
+    search_fields = ('name', 'cnpj', 'contact')
+    ordering = ('name',)
+
+
 @admin.register(Guest)
 class GuestAdmin(admin.ModelAdmin):
     list_display = ('name', 'company', 'phone', 'cpf')
     list_filter = ('company',)
-    search_fields = ('name', 'company', 'cpf', 'phone')
+    # Agora busca também pelo nome da empresa
+    search_fields = ('name', 'company__name', 'cpf', 'phone')
+    # Adiciona um campo de busca para selecionar a empresa (útil se tiver muitas)
+    autocomplete_fields = ['company']
 
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ('guest', 'get_room_bed', 'start_date', 'end_date', 'status', 'has_luggage')
+    # Adicionei 'get_company' na lista
+    list_display = ('guest', 'get_company', 'get_room_bed', 'start_date', 'end_date', 'status', 'has_luggage')
     list_filter = ('status', 'has_luggage', 'start_date', 'guest__company')
-    search_fields = ('guest__name', 'bed__room__number', 'bed__name')
-    readonly_fields = ('history_formatted', 'start_date')  # Histórico apenas leitura para segurança
+    search_fields = ('guest__name', 'guest__company__name', 'bed__room__number', 'bed__name')
+    readonly_fields = ('history_formatted', 'start_date')
 
-    # Formata o JSON do histórico para ficar bonito no Admin
     def history_formatted(self, obj):
         import json
         return json.dumps(obj.history, indent=4, ensure_ascii=False)
@@ -54,3 +65,10 @@ class ReservationAdmin(admin.ModelAdmin):
         return f"{obj.bed.room.number} - {obj.bed.name}"
 
     get_room_bed.short_description = 'Quarto/Cama'
+
+    # Nova função para mostrar a empresa na tabela de reservas
+    def get_company(self, obj):
+        return obj.guest.company.name
+
+    get_company.short_description = 'Empresa'
+    get_company.admin_order_field = 'guest__company__name'  # Permite ordenar pela coluna

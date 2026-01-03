@@ -258,3 +258,35 @@ def confirm_checkin(request, pk):
         response['HX-Refresh'] = "true"
         return response
     return render(request, 'core/modals/edit_checkin.html', {'form': form, 'res': res})
+
+
+# Em core/views.py
+from .forms import MealForm, GuestForm, CompanyForm  # Atualize os imports
+from .printing import imprimir_ticket_refeicao  # Importa nossa função de impressão
+
+
+@login_required
+def meal_control(request):
+    if request.method == 'POST':
+        form = MealForm(request.POST)
+        if form.is_valid():
+            meal = form.save()
+
+            # --- Tenta Imprimir ---
+            imprimiu = imprimir_ticket_refeicao(meal)
+
+            msg = f"Refeição de {meal.name} salva!"
+            if imprimiu:
+                msg += " Ticket enviado para impressão."
+            else:
+                msg += " (Erro na impressão)."
+
+            # Retorna o form limpo e mensagem de sucesso
+            return render(request, 'core/partials/meal_form_content.html', {
+                'form': MealForm(),
+                'success_message': msg
+            })
+    else:
+        form = MealForm()
+
+    return render(request, 'core/meal_control.html', {'form': form})

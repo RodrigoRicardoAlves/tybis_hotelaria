@@ -10,6 +10,9 @@
         <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-flex align-items-center">Pré</span>
         <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle d-flex align-items-center">Manutenção</span>
 
+        <a href="{% url 'meal_control' %}" class="btn btn-outline-dark ms-3 shadow-sm">
+            <i class="bi bi-ticket-perforated"></i> Ticket Refeição
+        </a>
         <button class="btn btn-primary ms-3 shadow-sm" hx-get="{% url 'new_reservation_modal' %}" hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#mainModal">
             <i class="bi bi-plus-circle-fill"></i> Nova Reserva
         </button>

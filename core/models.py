@@ -78,3 +78,20 @@ class Reservation(models.Model):
 
     def __str__(self):
         return f"{self.guest.name} ({self.status})"
+
+
+# No final de core/models.py
+class Meal(models.Model):
+    MEAL_CHOICES = [
+        ('ALMOCO', 'Almoço'),
+        ('JANTA', 'Janta'),
+    ]
+
+    name = models.CharField("Nome Completo", max_length=200)
+    cpf = models.CharField("CPF", max_length=14, blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, verbose_name="Empresa")
+    meal_type = models.CharField("Tipo", max_length=10, choices=MEAL_CHOICES, default='ALMOCO')
+    created_at = models.DateTimeField("Data/Hora", auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.meal_type}"

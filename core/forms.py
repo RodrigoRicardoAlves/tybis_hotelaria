@@ -22,3 +22,18 @@ class ReservationForm(forms.ModelForm):
     class Meta:
         model = Reservation
         fields = ['bed']
+
+
+# Em core/forms.py
+from .models import Meal # Importe o Meal
+
+class MealForm(forms.ModelForm):
+    class Meta:
+        model = Meal
+        fields = ['meal_type', 'name', 'cpf', 'company']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nome do Hóspede/Funcionário', 'autofocus': True}),
+            'cpf': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '000.000.000-00'}),
+            'company': forms.Select(attrs={'class': 'form-select'}),
+            'meal_type': forms.RadioSelect(attrs={'class': 'btn-check'}),
+        }

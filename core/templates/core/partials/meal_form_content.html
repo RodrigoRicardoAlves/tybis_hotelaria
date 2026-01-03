@@ -1,0 +1,54 @@
+{% if success_message %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-printer-fill me-2"></i> {{ success_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endif %}
+
+<form hx-post="{% url 'meal_control' %}" hx-target="#meal-form-container" hx-swap="innerHTML">
+    {% csrf_token %}
+
+<div class="mb-4 text-center">
+    <div class="btn-group w-100" role="group">
+        {% for radio in form.meal_type %}
+            {{ radio.tag }}
+            <label class="btn btn-outline-primary fw-bold py-2" for="{{ radio.id_for_label }}">
+
+                {% if radio.data.value == 'ALMOCO' %}
+                    <i class="bi bi-sun-fill me-2"></i>ALMOÇO
+                {% else %}
+                    <i class="bi bi-moon-stars-fill me-2"></i>JANTA
+                {% endif %}
+
+            </label>
+        {% endfor %}
+    </div>
+</div>
+
+    <div class="form-floating mb-3">
+        {{ form.name }}
+        <label>Nome Completo</label>
+    </div>
+
+    <div class="row g-2 mb-3">
+        <div class="col-md-6">
+            <div class="form-floating">
+                {{ form.company }}
+                <label>Empresa / Particular</label>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-floating">
+                {{ form.cpf }}
+                <label>CPF (Opcional)</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-grid mt-4">
+        <button type="submit" class="btn btn-success btn-lg py-3 shadow-sm">
+            <i class="bi bi-check-lg display-6"></i><br>
+            CONFIRMAR E IMPRIMIR
+        </button>
+    </div>
+</form>
