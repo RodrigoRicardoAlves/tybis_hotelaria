@@ -1,40 +1,66 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between mb-3">
-    <h4>Mapa de Quartos</h4>
-    <button class="btn btn-primary" hx-get="{% url 'new_reservation_modal' %}" hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#mainModal">
-        <i class="bi bi-plus-lg"></i> Nova Reserva
-    </button>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-secondary"><i class="bi bi-grid-3x3-gap"></i> Mapa de Ocupação</h3>
+
+    <div class="d-flex gap-2">
+        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle d-flex align-items-center">Livre</span>
+        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle d-flex align-items-center">Ocupado</span>
+        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-flex align-items-center">Pré</span>
+
+        <button class="btn btn-primary ms-3 shadow-sm" hx-get="{% url 'new_reservation_modal' %}" hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#mainModal">
+            <i class="bi bi-plus-circle-fill"></i> Nova Reserva
+        </button>
+    </div>
 </div>
 
 <div class="row g-3">
     {% for item in dashboard_data %}
     <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-        <div class="card h-100 shadow-sm {% if item.room.is_maintenance %}border-danger bg-danger-subtle{% endif %}">
+        <div class="card h-100 shadow-sm border-0 {% if item.room.is_maintenance %}bg-danger-subtle{% else %}border-top border-4 border-primary{% endif %}">
 
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span class="fw-bold fs-5">Quarto {{ item.room.number }}</span>
-                <div>
+            <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pb-0 pt-3">
+                <span class="fw-bold fs-4 text-dark">
+                    <i class="bi bi-door-closed"></i> {{ item.room.number }}
+                </span>
+
+                <div class="d-flex gap-2 align-items-center">
                     {% if item.room.climate == 'AC' %}
-                        <i class="bi bi-snow text-primary" title="Ar Condicionado"></i>
+                        <span class="badge bg-info text-dark" title="Ar Condicionado"><i class="bi bi-snow"></i> AC</span>
                     {% else %}
-                        <i class="bi bi-fan" title="Ventilador"></i>
+                        <span class="badge bg-secondary" title="Ventilador"><i class="bi bi-fan"></i> Vent</span>
                     {% endif %}
 
-                    <button class="btn btn-sm btn-link text-secondary"
+                    {% if request.user.is_staff %}
+                    <button class="btn btn-sm btn-link text-secondary p-0 ms-2"
                             hx-post="{% url 'toggle_maintenance' item.room.id %}"
-                            hx-confirm="Travar/Destravar quarto para manutenção?">
-                        <i class="bi bi-cone-striped"></i>
+                            hx-confirm="Alterar status de manutenção do Quarto {{ item.room.number }}?"
+                            title="Manutenção">
+                        {% if item.room.is_maintenance %}
+                            <i class="bi bi-cone-striped text-danger fs-5"></i>
+                        {% else %}
+                            <i class="bi bi-gear fs-5"></i>
+                        {% endif %}
                     </button>
+                    {% endif %}
                 </div>
             </div>
 
-            <ul class="list-group list-group-flush">
-                {% for bed_info in item.beds %}
-                    {% include 'core/partials/bed_card.html' with bed=bed_info.bed res=bed_info.res %}
-                {% endfor %}
-            </ul>
+            <div class="card-body p-2">
+                {% if item.room.is_maintenance %}
+                    <div class="text-center text-danger py-4 opacity-75">
+                        <i class="bi bi-cone-striped display-4"></i>
+                        <p class="fw-bold mt-2">EM MANUTENÇÃO</p>
+                    </div>
+                {% else %}
+                    <ul class="list-group list-group-flush rounded-3 overflow-hidden">
+                        {% for bed_info in item.beds %}
+                            {% include 'core/partials/bed_card.html' with bed=bed_info.bed res=bed_info.res %}
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
         </div>
     </div>
     {% endfor %}

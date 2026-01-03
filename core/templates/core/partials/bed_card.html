@@ -1,33 +1,53 @@
-<li class="list-group-item p-2 d-flex justify-content-between align-items-center" id="bed-{{ bed.id }}">
+<li class="list-group-item p-2 d-flex justify-content-between align-items-center
+    {% if not res %}
+        list-group-item-success
+    {% elif res.status == 'PRE' %}
+        list-group-item-warning
+    {% else %}
+        list-group-item-primary
+    {% endif %}"
+    id="bed-{{ bed.id }}">
 
-    <div style="width: 40px;" class="fw-bold text-secondary border-end me-2">
+    <div style="width: 40px; font-size: 1.1em;" class="fw-bold border-end border-dark-subtle me-2 text-center">
         {{ bed.name }}
     </div>
 
     <div class="flex-grow-1 lh-sm">
         {% if res %}
-            <div class="fw-bold text-truncate" style="max-width: 150px;">{{ res.guest.name }}</div>
-            <div class="small text-muted">
-                <i class="bi bi-building"></i> {{ res.guest.company }}
+            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                <i class="bi bi-person-fill"></i> {{ res.guest.name }}
+            </div>
+
+            <div class="small mt-1 d-flex align-items-center flex-wrap gap-2 text-dark-emphasis">
+                <span><i class="bi bi-building"></i> {{ res.guest.company }}</span>
+
+                {% if res.has_luggage %}
+                    <span class="badge bg-danger text-white border border-light">
+                        <i class="bi bi-suitcase-fill"></i> Mala
+                    </span>
+                {% endif %}
+
                 {% if res.status == 'PRE' %}
-                    <span class="badge bg-warning text-dark ms-1">Pré</span>
+                    <span class="badge bg-white text-warning border border-warning">Pré-reserva</span>
                 {% endif %}
             </div>
         {% else %}
-            <span class="text-success small"><i class="bi bi-check-circle"></i> Livre</span>
+            <div class="text-success-emphasis fw-medium">
+                <i class="bi bi-check-circle-fill"></i> Livre
+            </div>
         {% endif %}
     </div>
 
     {% if res %}
-    <div class="btn-group btn-group-sm">
-        <button class="btn {% if res.has_luggage %}btn-warning{% else %}btn-outline-secondary{% endif %}"
+    <div class="btn-group btn-group-sm bg-white rounded shadow-sm ms-2">
+        <button class="btn {% if res.has_luggage %}btn-danger{% else %}btn-outline-secondary{% endif %} border-0"
                 hx-post="{% url 'toggle_luggage' res.id %}"
                 hx-target="#bed-{{ bed.id }}"
                 title="Mala">
             <i class="bi bi-suitcase-lg-fill"></i>
         </button>
 
-        <button class="btn btn-outline-primary"
+        <button class="btn btn-outline-primary border-0"
                 hx-get="{% url 'change_room_modal' res.id %}"
                 hx-target="#modal-content"
                 data-bs-toggle="modal" data-bs-target="#mainModal"
@@ -35,13 +55,22 @@
             <i class="bi bi-arrow-left-right"></i>
         </button>
 
-        <button class="btn btn-outline-danger"
+        <button class="btn btn-outline-danger border-0"
                 hx-post="{% url 'checkout' res.id %}"
                 hx-target="#bed-{{ bed.id }}"
-                hx-confirm="Confirmar saída?"
+                hx-confirm="Confirmar saída de {{ res.guest.name }}?"
                 title="Checkout">
             <i class="bi bi-box-arrow-right"></i>
         </button>
     </div>
+    {% else %}
+         <button class="btn btn-sm btn-outline-success bg-white border-0 shadow-sm"
+            hx-get="{% url 'new_reservation_modal' %}"
+            hx-target="#modal-content"
+            data-bs-toggle="modal"
+            data-bs-target="#mainModal"
+            title="Reservar esta cama">
+            <i class="bi bi-plus-lg"></i>
+         </button>
     {% endif %}
 </li>
