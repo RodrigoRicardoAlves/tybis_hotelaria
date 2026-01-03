@@ -4,17 +4,25 @@
 </div>
 
 <div class="modal-body">
-    <form id="new-reservation-form" hx-post="{% url 'create_reservation' %}" hx-target="body">
+    <form id="new-reservation-form"
+          hx-post="{% url 'create_reservation' %}"
+          hx-target="#modal-content">
         {% csrf_token %}
+
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2">
+                <i class="bi bi-exclamation-triangle-fill"></i> {{ form.non_field_errors|join:", " }}
+            </div>
+        {% endif %}
 
         <div class="mb-3">
             <label class="form-label">Nome do Hóspede</label>
-            <input type="text" name="name" class="form-control" required autofocus>
+            <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" required autofocus>
+            {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
         </div>
 
         <div class="mb-3">
             <label class="form-label">Empresa / Responsável</label>
-
             <div class="input-group">
                 <select name="company" id="company-select" class="form-select" required
                         hx-get="{% url 'htmx_available_beds' %}"
@@ -22,31 +30,30 @@
                         hx-trigger="change">
                     <option value="" selected disabled>-- Selecione a Empresa --</option>
                     {% for company in form.fields.company.queryset %}
-                        <option value="{{ company.id }}">{{ company.name }}</option>
+                        <option value="{{ company.id }}" {% if form.company.value|stringformat:"s" == company.id|stringformat:"s" %}selected{% endif %}>
+                            {{ company.name }}
+                        </option>
                     {% endfor %}
                 </select>
-
                 <button type="button" class="btn btn-outline-secondary" onclick="setParticular()">
                     <i class="bi bi-person-fill"></i> Particular
                 </button>
             </div>
 
             <div class="form-text small d-flex justify-content-between">
-                <span>Define a regra de alocação de quarto.</span>
-                <a href="{% url 'company_create' %}" target="_blank" class="text-decoration-none">
-                    <i class="bi bi-plus-circle"></i> Nova Empresa
-                </a>
+                <span>Define a regra de alocação.</span>
+                <a href="{% url 'company_create' %}" target="_blank" class="text-decoration-none">Nova Empresa</a>
             </div>
         </div>
 
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label class="form-label">Telefone</label>
-                <input type="text" name="phone" class="form-control">
+                <input type="text" name="phone" class="form-control" value="{{ form.phone.value|default:'' }}">
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">CPF</label>
-                <input type="text" name="cpf" class="form-control">
+                <input type="text" name="cpf" class="form-control" value="{{ form.cpf.value|default:'' }}">
             </div>
         </div>
 
@@ -54,14 +61,17 @@
             <label class="form-label fw-bold">Selecione o Quarto/Cama</label>
             <select name="bed_id" id="bed-select" class="form-select" required>
                 <option value="" selected disabled>-- Selecione a Empresa primeiro --</option>
+                {% for bed in beds %}
+                    <option value="{{ bed.id }}" {% if selected_bed_id == bed.id %}selected{% endif %}>
+                        Quarto {{ bed.room.number }} - Cama {{ bed.name }} ({{ bed.room.get_climate_display }})
+                    </option>
+                {% endfor %}
             </select>
         </div>
 
         <div class="form-check mb-3">
             <input class="form-check-input" type="checkbox" name="is_pre" id="isPreCheck">
-            <label class="form-check-label" for="isPreCheck">
-                Marcar como Pré-reserva
-            </label>
+            <label class="form-check-label" for="isPreCheck">Marcar como Pré-reserva</label>
         </div>
     </form>
 </div>
@@ -75,8 +85,6 @@
     function setParticular() {
         const select = document.getElementById('company-select');
         let found = false;
-
-        // Procura a opção que tem o texto "Particular" (case insensitive)
         for (let i = 0; i < select.options.length; i++) {
             if (select.options[i].text.toLowerCase().includes('particular')) {
                 select.selectedIndex = i;
@@ -84,12 +92,7 @@
                 break;
             }
         }
-
-        if (found) {
-            // Dispara o evento 'change' manualmente para o HTMX acordar e buscar as camas
-            select.dispatchEvent(new Event('change'));
-        } else {
-            alert('A empresa "Particular" ainda não foi cadastrada no sistema. Por favor, cadastre-a na tela de Empresas.');
-        }
+        if (found) { select.dispatchEvent(new Event('change')); }
+        else { alert('Empresa "Particular" não cadastrada.'); }
     }
 </script>
