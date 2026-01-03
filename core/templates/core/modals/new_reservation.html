@@ -1,0 +1,60 @@
+<div class="modal-header">
+    <h5 class="modal-title">Nova Reserva</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    <form id="new-reservation-form"
+          hx-post="{% url 'create_reservation' %}"
+          hx-target="body"> {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Nome Completo</label>
+            <input type="text" name="name" class="form-control" required>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Empresa</label>
+                <input type="text" name="company" class="form-control" required
+                       placeholder="Define a regra de alocação">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Telefone</label>
+                <input type="text" name="phone" class="form-control">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Selecione o Quarto/Cama</label>
+            <select name="bed_id" class="form-select" required>
+                <option value="" selected disabled>-- Escolha uma cama disponível --</option>
+                {% for bed in beds %}
+                    <option value="{{ bed.id }}">
+                        Quarto {{ bed.room.number }} - Cama {{ bed.name }}
+                        ({{ bed.room.get_climate_display }})
+                    </option>
+                {% empty %}
+                    <option disabled>Nenhuma cama disponível no momento.</option>
+                {% endfor %}
+            </select>
+            <div class="form-text">
+                Mostrando apenas camas em quartos vazios ou com mesma empresa.
+            </div>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="is_pre" id="isPreCheck">
+            <label class="form-check-label" for="isPreCheck">
+                Marcar como Pré-reserva (Bloqueia a vaga)
+            </label>
+        </div>
+    </form>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" form="new-reservation-form" class="btn btn-success">
+        <i class="bi bi-check-lg"></i> Confirmar Reserva
+    </button>
+</div>

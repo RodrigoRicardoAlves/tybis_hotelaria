@@ -1,0 +1,40 @@
+<div class="modal-header">
+    <h5 class="modal-title">Trocar de Quarto</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    <div class="alert alert-info">
+        Movendo: <strong>{{ res.guest.name }}</strong><br>
+        Empresa: <strong>{{ res.guest.company }}</strong><br>
+        Atual: Quarto {{ res.bed.room.number }} - Cama {{ res.bed.name }}
+    </div>
+
+    <form id="change-room-form"
+          hx-post="{% url 'change_room' res.pk %}"
+          hx-target="body">
+
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Novo Quarto/Cama</label>
+            <select name="new_bed_id" class="form-select" required>
+                <option value="" selected disabled>-- Selecione o destino --</option>
+                {% for bed in beds %}
+                    <option value="{{ bed.id }}">
+                        Quarto {{ bed.room.number }} - Cama {{ bed.name }}
+                    </option>
+                {% empty %}
+                    <option disabled>Nenhuma outra cama disponível para esta empresa.</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" form="change-room-form" class="btn btn-primary">
+        Mover Hóspede
+    </button>
+</div>
