@@ -12,7 +12,6 @@
                 <i class="bi bi-fan" title="Ventilador" style="opacity: 0.6;"></i>
             {% endif %}
 
-            {% if request.user.is_staff %}
             <button class="btn btn-sm btn-link text-inherit p-0 ms-2"
                     style="color: inherit; opacity: 0.7;"
                     hx-post="{% url 'toggle_maintenance' item.room.id %}"
@@ -20,7 +19,6 @@
                     title="Alternar Manutenção">
                 <i class="bi bi-gear-fill"></i>
             </button>
-            {% endif %}
         </div>
     </div>
 
