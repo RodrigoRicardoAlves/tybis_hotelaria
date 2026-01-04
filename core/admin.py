@@ -55,9 +55,10 @@ class RoomAdmin(admin.ModelAdmin):
 
     def is_maintenance_badge(self, obj):
         # Cria um indicador visual (ícone) para status de manutenção
+        # CORREÇÃO: Passamos o texto como argumento para o format_html funcionar
         if obj.is_maintenance:
-            return format_html('<span style="color:red; font-weight:bold;">⚠️ Sim</span>')
-        return format_html('<span style="color:green;">Não</span>')
+            return format_html('<span style="color:red; font-weight:bold;">⚠️ {}</span>', 'Sim')
+        return format_html('<span style="color:green;">{}</span>', 'Não')
 
     is_maintenance_badge.short_description = 'Manutenção'
 
