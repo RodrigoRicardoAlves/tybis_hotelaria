@@ -1,0 +1,6 @@
+asgiref==3.11.0
+Django==6.0
+django-htmx==1.27.0
+django-widget-tweaks==1.5.1
+sqlparse==0.5.5
+pywin32
