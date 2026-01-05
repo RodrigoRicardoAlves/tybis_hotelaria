@@ -1,29 +1,54 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-secondary"><i class="bi bi-grid-3x3-gap"></i> Mapa de Ocupação</h3>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+    <h3 class="text-secondary mb-0"><i class="bi bi-grid-3x3-gap"></i> Mapa de Ocupação</h3>
 
-    <div class="d-flex gap-2">
-        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle d-flex align-items-center">Livre</span>
-        <span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle d-flex align-items-center">Ocupado</span>
-        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-flex align-items-center">Pré</span>
-        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle d-flex align-items-center">Manutenção</span>
+    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
 
-        <a href="{% url 'meal_control' %}" class="btn btn-outline-dark ms-3 shadow-sm">
-            <i class="bi bi-ticket-perforated"></i> Ticket Refeição
-        </a>
-        <button class="btn btn-primary ms-3 shadow-sm" hx-get="{% url 'new_reservation_modal' %}" hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#mainModal">
-            <i class="bi bi-plus-circle-fill"></i> Nova Reserva
-        </button>
+        <div class="btn-group shadow-sm" role="group">
+            <button type="button" class="btn btn-outline-secondary"
+                    hx-get="{% url 'dashboard' %}?filter=ALL" hx-target="#room-grid" hx-swap="outerHTML">
+                Todos
+            </button>
+
+            <button type="button" class="btn btn-outline-success"
+                    hx-get="{% url 'dashboard' %}?filter=FREE" hx-target="#room-grid" hx-swap="outerHTML">
+                Livre
+            </button>
+
+            <button type="button" class="btn btn-outline-primary"
+                    hx-get="{% url 'dashboard' %}?filter=OCCUPIED" hx-target="#room-grid" hx-swap="outerHTML">
+                Ocupado
+            </button>
+
+            <button type="button" class="btn btn-outline-warning"
+                    hx-get="{% url 'dashboard' %}?filter=PRE" hx-target="#room-grid" hx-swap="outerHTML">
+                Pré
+            </button>
+
+            <button type="button" class="btn btn-outline-danger"
+                    hx-get="{% url 'dashboard' %}?filter=MAINTENANCE" hx-target="#room-grid" hx-swap="outerHTML">
+                Manutenção
+            </button>
+        </div>
+
+        <div class="border-start mx-2 d-none d-md-block" style="height: 30px;"></div>
+
+        <div class="d-flex gap-2">
+            <a href="{% url 'meal_control' %}" class="btn btn-outline-dark shadow-sm">
+                <i class="bi bi-ticket-perforated"></i> Refeição
+            </a>
+            <button class="btn btn-primary shadow-sm"
+                    hx-get="{% url 'new_reservation_modal' %}"
+                    hx-target="#modal-content"
+                    data-bs-toggle="modal" data-bs-target="#mainModal">
+                <i class="bi bi-plus-circle-fill"></i> Nova Reserva
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="row g-3">
-    {% for item in dashboard_data %}
-    <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-        {% include 'core/partials/room_card.html' with item=item %}
-    </div>
-    {% endfor %}
-</div>
+{% include 'core/partials/dashboard_grid.html' %}
+
 {% endblock %}

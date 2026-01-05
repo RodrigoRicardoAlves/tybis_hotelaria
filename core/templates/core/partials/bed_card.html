@@ -7,7 +7,16 @@
     <div class="flex-grow-1 lh-sm">
         {% if res %}
             <div class="fw-bold text-dark d-flex align-items-center gap-2">
-                {{ res.guest.name }}
+                <a href="#"
+                   class="text-decoration-none text-dark d-flex align-items-center"
+                   hx-get="{% url 'guest_edit_modal' res.guest.id %}"
+                   hx-target="#modal-content"
+                   data-bs-toggle="modal"
+                   data-bs-target="#mainModal"
+                   title="Clique para editar os dados deste hóspede">
+                    {{ res.guest.name }}
+                    <i class="bi bi-pencil-square ms-2 text-secondary small opacity-50"></i>
+                </a>
             </div>
 
             <div class="small mt-1 d-flex align-items-center flex-wrap gap-2 text-muted">

@@ -1,6 +1,6 @@
 import os
 import traceback
-from datetime import datetime
+from django.utils import timezone
 
 # Tenta importar bibliotecas do Windows. Se der erro (Linux), vai para o 'except'
 try:
@@ -83,8 +83,12 @@ try:
             hDC.TextOut(MARGIN_LEFT, Y_CURSOR, "DATA/HORA:")
             Y_CURSOR += 35
             hDC.SelectObject(font_data)
-            hDC.TextOut(MARGIN_LEFT + 10, Y_CURSOR, meal.created_at.strftime('%d/%m/%Y   %H:%M'))
+
+            # Converte UTC para o fuso horário configurado no settings.py (America/Sao_Paulo)
+            data_local = timezone.localtime(meal.created_at)
+            hDC.TextOut(MARGIN_LEFT + 10, Y_CURSOR, data_local.strftime('%d/%m/%Y   %H:%M'))
             Y_CURSOR += 60
+            # -----------------------------
 
             # Rodapé
             hDC.MoveTo(0, Y_CURSOR)

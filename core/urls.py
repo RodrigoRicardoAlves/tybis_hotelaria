@@ -44,6 +44,7 @@ urlpatterns = [
     path('reserva/<int:pk>/mala/', views.toggle_luggage, name='toggle_luggage'),
     path('reserva/<int:pk>/checkout/', views.checkout, name='checkout'),
     path('reserva/<int:pk>/cancelar/', views.cancel_reservation, name='cancel_reservation'),
+    path('hospede/<int:pk>/editar/', views.guest_edit_modal, name='guest_edit_modal'),
 
     # Troca de Quarto
     path('reserva/<int:pk>/troca-modal/', views.change_room_modal, name='change_room_modal'),

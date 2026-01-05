@@ -23,42 +23,44 @@ from .printing import imprimir_ticket_refeicao
 
 def _get_room_item(room):
     """
-    Constrói o dicionário de dados de um quarto para exibição no Dashboard.
-    Define a cor do card baseada no status (Livre, Ocupado, Manutenção, Pré).
+    Constrói o dicionário do quarto.
+    Adicionado 'status_code' para facilitar a filtragem na View.
     """
     beds_data = []
     has_active = False
     has_pre = False
 
-    # Itera sobre as camas para buscar reservas ativas
     for bed in room.beds.all():
         res = bed.reservations.filter(status__in=['ACTIVE', 'PRE']).first()
         beds_data.append({'bed': bed, 'res': res})
         if res:
-            if res.status == 'ACTIVE':
-                has_active = True
-            elif res.status == 'PRE':
-                has_pre = True
+            if res.status == 'ACTIVE': has_active = True
+            elif res.status == 'PRE': has_pre = True
 
-    # Definição de estilos visuais (Bootstrap classes)
+    # Lógica de decisão do Status
     if room.is_maintenance:
         status_class = 'bg-danger-subtle text-danger-emphasis'
         status_icon = 'bi-cone-striped'
+        status_code = 'MAINTENANCE'  # Código para filtro
     elif has_active:
         status_class = 'bg-primary-subtle text-primary-emphasis'
         status_icon = 'bi-door-open-fill'
+        status_code = 'OCCUPIED'
     elif has_pre:
         status_class = 'bg-warning-subtle text-warning-emphasis'
         status_icon = 'bi-clock-history'
+        status_code = 'PRE'
     else:
         status_class = 'bg-success-subtle text-success-emphasis'
         status_icon = 'bi-door-closed'
+        status_code = 'FREE'
 
     return {
         'room': room,
         'beds': beds_data,
         'status_class': status_class,
-        'status_icon': status_icon
+        'status_icon': status_icon,
+        'status_code': status_code # Novo campo
     }
 
 
@@ -107,16 +109,29 @@ def get_available_beds_query(company_id=None):
 
 @login_required
 def dashboard(request):
-    """
-    View principal. Renderiza o mapa de quartos.
-    """
-    # Ordena quartos numericamente (1, 2, 10) em vez de string (1, 10, 2)
+    # 1. Pega todos os quartos
     rooms = Room.objects.annotate(
         numero_ordenado=Cast('number', IntegerField())
     ).order_by('numero_ordenado')
 
-    dashboard_data = [_get_room_item(room) for room in rooms]
-    return render(request, 'core/dashboard.html', {'dashboard_data': dashboard_data})
+    # 2. Monta a lista completa com a lógica de cores
+    full_data = [_get_room_item(room) for room in rooms]
+
+    # 3. Aplica o Filtro (se houver na URL, ex: ?filter=FREE)
+    filter_type = request.GET.get('filter')
+
+    if filter_type and filter_type != 'ALL':
+        # Filtra a lista Python mantendo apenas os que batem com o status_code
+        dashboard_data = [item for item in full_data if item['status_code'] == filter_type]
+    else:
+        dashboard_data = full_data
+
+    # 4. Resposta Inteligente (HTMX vs Normal)
+    # Se for HTMX (clique no botão), retorna só a grade. Se for acesso normal, retorna a página toda.
+    if request.htmx:
+        return render(request, 'core/partials/dashboard_grid.html', {'dashboard_data': dashboard_data})
+
+    return render(request, 'core/dashboard.html', {'dashboard_data': dashboard_data, 'current_filter': filter_type})
 
 
 # ==============================================================================
@@ -404,3 +419,26 @@ def meal_control(request):
         form = MealForm()
 
     return render(request, 'core/meal_control.html', {'form': form})
+
+
+# Adicione em core/views.py
+
+@login_required
+def guest_edit_modal(request, pk):
+    """
+    Abre um modal para editar os dados cadastrais do hóspede (Nome, CPF, etc).
+    """
+    guest = get_object_or_404(Guest, pk=pk)
+
+    if request.method == 'POST':
+        form = GuestForm(request.POST, instance=guest)
+        if form.is_valid():
+            form.save()
+            # Retorna 204 para o HTMX atualizar a página (HX-Refresh)
+            response = HttpResponse(status=204)
+            response['HX-Refresh'] = "true"
+            return response
+    else:
+        form = GuestForm(instance=guest)
+
+    return render(request, 'core/modals/edit_guest.html', {'form': form, 'guest': guest})
