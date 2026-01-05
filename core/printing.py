@@ -1,4 +1,5 @@
 import os
+import traceback
 from datetime import datetime
 
 # Tenta importar bibliotecas do Windows. Se der erro (Linux), vai para o 'except'
@@ -97,7 +98,13 @@ try:
             finalizar_impressora(hDC)
             return True
         except Exception as e:
-            print(f"Erro na impressão Windows: {e}")
+            print("\n" + "=" * 50)
+            print("❌ ERRO CRÍTICO NA IMPRESSÃO")
+            print(f"Erro resumido: {e}")
+            print("-" * 20)
+            print("Detalhes técnicos (Traceback):")
+            traceback.print_exc()  # Isso imprime o log detalhado no console do Waitress
+            print("=" * 50 + "\n")
             return False
 
 except ImportError:
