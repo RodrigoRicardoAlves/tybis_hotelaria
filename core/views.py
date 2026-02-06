@@ -1,30 +1,29 @@
 # core/views.py
 import json
-from datetime import datetime
+import csv
+from datetime import datetime, date, timedelta
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import HttpResponse
 from django.utils import timezone
 from django.db.models.functions import Cast
-from django.db.models import IntegerField
+from django.db.models import IntegerField, Count, Q
 from django.views.decorators.http import require_http_methods
 
 # Imports locais
-from .models import Room, Bed, Reservation, Guest, Company
+from .models import Room, Bed, Reservation, Guest, Company, Meal
 from .forms import GuestForm, CompanyForm, MealForm
 from .printing import imprimir_ticket_refeicao
 
 
 # ==============================================================================
 # 1. HELPERS & UTILITÁRIOS
-# Funções auxiliares que não são views diretas, mas suportam a lógica.
 # ==============================================================================
 
 def _get_room_item(room):
     """
-    Constrói o dicionário do quarto.
-    Adicionado 'status_code' para facilitar a filtragem na View.
+    Constrói o dicionário de dados de um quarto para exibição no Dashboard.
     """
     beds_data = []
     has_active = False
@@ -34,14 +33,15 @@ def _get_room_item(room):
         res = bed.reservations.filter(status__in=['ACTIVE', 'PRE']).first()
         beds_data.append({'bed': bed, 'res': res})
         if res:
-            if res.status == 'ACTIVE': has_active = True
-            elif res.status == 'PRE': has_pre = True
+            if res.status == 'ACTIVE':
+                has_active = True
+            elif res.status == 'PRE':
+                has_pre = True
 
-    # Lógica de decisão do Status
     if room.is_maintenance:
         status_class = 'bg-danger-subtle text-danger-emphasis'
         status_icon = 'bi-cone-striped'
-        status_code = 'MAINTENANCE'  # Código para filtro
+        status_code = 'MAINTENANCE'
     elif has_active:
         status_class = 'bg-primary-subtle text-primary-emphasis'
         status_icon = 'bi-door-open-fill'
@@ -60,31 +60,25 @@ def _get_room_item(room):
         'beds': beds_data,
         'status_class': status_class,
         'status_icon': status_icon,
-        'status_code': status_code # Novo campo
+        'status_code': status_code
     }
 
 
 def get_available_beds_query(company_id=None):
     """
-    Regra de Negócio Crucial:
-    Retorna camas disponíveis, respeitando a regra de que hóspedes de
-    empresas diferentes não podem dividir o mesmo quarto.
+    Retorna camas disponíveis, respeitando a regra de empresas diferentes.
     """
-    # 1. Pega todas as camas em quartos sem manutenção e sem reserva ativa/pré
     available_beds = Bed.objects.filter(room__is_maintenance=False).exclude(
         reservations__status__in=['ACTIVE', 'PRE']
     )
 
-    # Se não selecionou empresa, retorna tudo que está tecnicamente vazio
     if not company_id:
         return available_beds
 
-    # 2. Se tem empresa selecionada, verifica quem são os vizinhos de quarto
     valid_bed_ids = []
     target_company_id = int(company_id)
 
     for bed in available_beds:
-        # Pega reservas ativas nas OUTRAS camas do mesmo quarto
         roommates = Reservation.objects.filter(
             bed__room=bed.room,
             status__in=['ACTIVE', 'PRE']
@@ -92,7 +86,6 @@ def get_available_beds_query(company_id=None):
 
         can_enter = True
         for roommate in roommates:
-            # Se houver alguém de outra empresa, bloqueia a entrada
             if roommate.guest.company.id != target_company_id:
                 can_enter = False
                 break
@@ -104,56 +97,67 @@ def get_available_beds_query(company_id=None):
 
 
 # ==============================================================================
-# 2. DASHBOARD (VISÃO GERAL)
+# 2. DASHBOARD
 # ==============================================================================
 
 @login_required
 def dashboard(request):
-    # 1. Pega todos os quartos
     rooms = Room.objects.annotate(
         numero_ordenado=Cast('number', IntegerField())
     ).order_by('numero_ordenado')
 
-    # 2. Monta a lista completa com a lógica de cores
     full_data = [_get_room_item(room) for room in rooms]
 
-    # 3. Aplica o Filtro (se houver na URL, ex: ?filter=FREE)
-    filter_type = request.GET.get('filter')
+    # Contagem para os botões de filtro
+    counts = {
+        'total': len(full_data),
+        'free': 0,
+        'occupied': 0,
+        'pre': 0,
+        'maintenance': 0
+    }
 
+    for item in full_data:
+        code = item['status_code']
+        if code == 'FREE':
+            counts['free'] += 1
+        elif code == 'OCCUPIED':
+            counts['occupied'] += 1
+        elif code == 'PRE':
+            counts['pre'] += 1
+        elif code == 'MAINTENANCE':
+            counts['maintenance'] += 1
+
+    # Filtro
+    filter_type = request.GET.get('filter')
     if filter_type and filter_type != 'ALL':
-        # Filtra a lista Python mantendo apenas os que batem com o status_code
         dashboard_data = [item for item in full_data if item['status_code'] == filter_type]
     else:
         dashboard_data = full_data
 
-    # 4. Resposta Inteligente (HTMX vs Normal)
-    # Se for HTMX (clique no botão), retorna só a grade. Se for acesso normal, retorna a página toda.
     if request.htmx:
         return render(request, 'core/partials/dashboard_grid.html', {'dashboard_data': dashboard_data})
 
-    return render(request, 'core/dashboard.html', {'dashboard_data': dashboard_data, 'current_filter': filter_type})
+    return render(request, 'core/dashboard.html', {
+        'dashboard_data': dashboard_data,
+        'current_filter': filter_type,
+        'counts': counts
+    })
 
 
 # ==============================================================================
-# 3. CICLO DE VIDA DA RESERVA (Criação, Check-in, Checkout, Cancelamento)
+# 3. RESERVAS E CHECK-IN
 # ==============================================================================
 
 @login_required
 def new_reservation_modal(request):
-    """
-    Abre o modal de nova reserva.
-    """
     form = GuestForm()
-    # Inicialmente carrega camas disponíveis sem filtro de empresa
     beds = get_available_beds_query(None)
     return render(request, 'core/modals/new_reservation.html', {'form': form, 'beds': beds})
 
 
 @login_required
 def get_available_beds_htmx(request):
-    """
-    HTMX: Atualiza o <select> de camas quando o usuário troca a empresa no formulário.
-    """
     company_id = request.GET.get('company')
     beds = get_available_beds_query(company_id)
     return render(request, 'core/partials/bed_options.html', {'beds': beds})
@@ -161,15 +165,11 @@ def get_available_beds_htmx(request):
 
 @login_required
 def create_reservation(request):
-    """
-    Processa o formulário de criação de reserva.
-    """
     if request.method == 'POST':
         form = GuestForm(request.POST)
         bed_id = request.POST.get('bed_id')
         is_pre = request.POST.get('is_pre') == 'on'
 
-        # Validação manual da cama
         if not bed_id:
             form.add_error(None, "Selecione um quarto/cama.")
 
@@ -177,27 +177,19 @@ def create_reservation(request):
             guest_company = form.cleaned_data['company']
             allowed_beds = get_available_beds_query(guest_company.id)
 
-            # Re-validação de segurança: verifica se a cama ainda é válida para essa empresa
             if not allowed_beds.filter(id=bed_id).exists():
-                form.add_error(None, "Cama indisponível ou conflito de empresa (alguém reservou antes?).")
+                form.add_error(None, "Cama indisponível ou conflito de empresa.")
             else:
-                # Salva Hóspede
                 guest = form.save()
-
-                # Cria Reserva
                 bed = get_object_or_404(Bed, pk=bed_id)
                 status = 'PRE' if is_pre else 'ACTIVE'
                 res = Reservation.objects.create(guest=guest, bed=bed, status=status)
-
-                # Log
                 res.add_log(request.user, "Reserva Criada", f"Quarto {bed.room.number}")
 
-                # Sucesso: Recarrega a página via HTMX
                 response = HttpResponse(status=204)
                 response['HX-Refresh'] = "true"
                 return response
 
-        # Erro: Devolve o modal com os erros
         company_id = request.POST.get('company')
         beds = get_available_beds_query(company_id) if company_id else []
         return render(request, 'core/modals/new_reservation.html', {
@@ -211,9 +203,6 @@ def create_reservation(request):
 
 @login_required
 def edit_checkin_modal(request, pk):
-    """
-    Abre modal para confirmar check-in de uma pré-reserva.
-    """
     res = get_object_or_404(Reservation, pk=pk)
     form = GuestForm(instance=res.guest)
     return render(request, 'core/modals/edit_checkin.html', {'form': form, 'res': res})
@@ -222,15 +211,11 @@ def edit_checkin_modal(request, pk):
 @login_required
 @require_http_methods(["POST"])
 def confirm_checkin(request, pk):
-    """
-    Efetiva o check-in: muda status PRE -> ACTIVE e define data de entrada.
-    """
     res = get_object_or_404(Reservation, pk=pk)
     form = GuestForm(request.POST, instance=res.guest)
 
     if form.is_valid():
-        form.save()  # Atualiza dados do hóspede se mudaram
-
+        form.save()
         res.status = 'ACTIVE'
         res.start_date = timezone.now()
         res.add_log(request.user, "Check-in Confirmado")
@@ -245,16 +230,11 @@ def confirm_checkin(request, pk):
 
 @login_required
 def checkout(request, pk):
-    """
-    Realiza a saída do hóspede. Libera o quarto.
-    """
     res = get_object_or_404(Reservation, pk=pk)
     res.status = 'FINISHED'
     res.end_date = timezone.now()
     res.add_log(request.user, "Checkout Realizado")
     res.save()
-
-    # Atualiza visualmente o card do quarto inteiro
     item = _get_room_item(res.bed.room)
     return render(request, 'core/partials/room_card.html', {'item': item})
 
@@ -262,98 +242,78 @@ def checkout(request, pk):
 @login_required
 @require_http_methods(["POST"])
 def cancel_reservation(request, pk):
-    """
-    Cancela uma PRÉ-reserva (apaga do banco).
-    """
     res = get_object_or_404(Reservation, pk=pk)
     room = res.bed.room
-
     if res.status == 'PRE':
         res.delete()
         item = _get_room_item(room)
         return render(request, 'core/partials/room_card.html', {'item': item})
+    return HttpResponse("Erro", status=400)
 
-    return HttpResponse("Ação inválida para reservas ativas", status=400)
-
-
-# ==============================================================================
-# 4. AÇÕES OPERACIONAIS (Trocas, Malas, Manutenção)
-# ==============================================================================
 
 @login_required
 def toggle_luggage(request, pk):
-    """
-    HTMX: Alterna o ícone de 'Mala Guardada'.
-    """
     res = get_object_or_404(Reservation, pk=pk)
     res.has_luggage = not res.has_luggage
-    res.add_log(request.user, "Guardou Mala" if res.has_luggage else "Retirou Mala")
+    res.add_log(request.user, "Mala: " + str(res.has_luggage))
     res.save()
-
     return render(request, 'core/partials/bed_card.html', {'bed': res.bed, 'res': res})
 
 
 @login_required
 def change_room_modal(request, pk):
-    """
-    Abre modal para troca de quarto.
-    """
     res = get_object_or_404(Reservation, pk=pk)
-    # Busca camas disponíveis para a empresa deste hóspede
-    available_beds = get_available_beds_query(res.guest.company.id)
-    return render(request, 'core/modals/change_room.html', {'res': res, 'beds': available_beds})
+    beds = get_available_beds_query(res.guest.company.id)
+    return render(request, 'core/modals/change_room.html', {'res': res, 'beds': beds})
 
 
 @login_required
 def change_room(request, pk):
-    """
-    Processa a troca de quarto.
-    """
     res = get_object_or_404(Reservation, pk=pk)
     new_bed_id = request.POST.get('new_bed_id')
-
     if new_bed_id:
         new_bed = get_object_or_404(Bed, pk=new_bed_id)
-
-        # Loga a mudança
-        res.add_log(request.user, "Mudança de Quarto", f"De {res.bed} para {new_bed}")
-
+        res.add_log(request.user, "Mudança de Quarto", f"Para {new_bed}")
         res.bed = new_bed
         res.save()
-
         response = HttpResponse(status=204)
         response['HX-Refresh'] = "true"
         return response
-
-    return HttpResponse("Cama inválida", status=400)
+    return HttpResponse("Erro", status=400)
 
 
 @login_required
 def toggle_maintenance(request, pk):
-    """
-    Coloca ou tira um quarto de manutenção.
-    Impede se houver hóspedes.
-    """
     room = get_object_or_404(Room, pk=pk)
-
     if not room.is_maintenance:
-        has_guests = Reservation.objects.filter(bed__room=room, status__in=['ACTIVE', 'PRE']).exists()
-        if has_guests:
-            # Retorna um evento HTMX para mostrar alerta no frontend
+        if Reservation.objects.filter(bed__room=room, status__in=['ACTIVE', 'PRE']).exists():
             response = HttpResponse(status=204)
-            response['HX-Trigger'] = json.dumps({"showAlert": "🚫 Quarto Ocupado! Não é possível iniciar manutenção."})
+            response['HX-Trigger'] = json.dumps({"showAlert": "Quarto Ocupado!"})
             return response
-
     room.is_maintenance = not room.is_maintenance
     room.save()
-
     response = HttpResponse(status=204)
     response['HX-Refresh'] = "true"
     return response
 
 
+@login_required
+def guest_edit_modal(request, pk):
+    guest = get_object_or_404(Guest, pk=pk)
+    if request.method == 'POST':
+        form = GuestForm(request.POST, instance=guest)
+        if form.is_valid():
+            form.save()
+            response = HttpResponse(status=204)
+            response['HX-Refresh'] = "true"
+            return response
+    else:
+        form = GuestForm(instance=guest)
+    return render(request, 'core/modals/edit_guest.html', {'form': form, 'guest': guest})
+
+
 # ==============================================================================
-# 5. GESTÃO DE EMPRESAS
+# 4. GESTÃO DE EMPRESAS
 # ==============================================================================
 
 @login_required
@@ -388,57 +348,205 @@ def company_update(request, pk):
 
 
 # ==============================================================================
-# 6. CONTROLE DE REFEIÇÕES (Ticket)
+# 5. REFEIÇÕES
 # ==============================================================================
 
 @login_required
 def meal_control(request):
-    """
-    Registra Almoço ou Janta e dispara impressão (Física ou Simulada).
-    """
     if request.method == 'POST':
         form = MealForm(request.POST)
         if form.is_valid():
             meal = form.save()
-
-            # Tenta imprimir (Printing.py detecta se é Linux/Dev ou Windows/Prod)
             imprimiu = imprimir_ticket_refeicao(meal)
-
-            msg = f"Refeição de {meal.name} salva!"
-            if imprimiu:
-                msg += " Ticket enviado para impressão."
-            else:
-                msg += " (Erro na impressão)."
-
-            # Retorna o form limpo e mensagem de sucesso via HTMX
-            return render(request, 'core/partials/meal_form_content.html', {
-                'form': MealForm(),
-                'success_message': msg
-            })
+            msg = f"Refeição de {meal.name} salva!" + (" (Impressão OK)" if imprimiu else " (Erro Impressão)")
+            return render(request, 'core/partials/meal_form_content.html', {'form': MealForm(), 'success_message': msg})
     else:
         form = MealForm()
-
     return render(request, 'core/meal_control.html', {'form': form})
 
 
-# Adicione em core/views.py
+# ==============================================================================
+# 6. RELATÓRIOS
+# ==============================================================================
 
 @login_required
-def guest_edit_modal(request, pk):
-    """
-    Abre um modal para editar os dados cadastrais do hóspede (Nome, CPF, etc).
-    """
-    guest = get_object_or_404(Guest, pk=pk)
+def occupancy_report(request):
+    """ Relatório 1: Ocupação por Empresa """
+    reservations = Reservation.objects.filter(status='ACTIVE')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
 
-    if request.method == 'POST':
-        form = GuestForm(request.POST, instance=guest)
-        if form.is_valid():
-            form.save()
-            # Retorna 204 para o HTMX atualizar a página (HX-Refresh)
-            response = HttpResponse(status=204)
-            response['HX-Refresh'] = "true"
-            return response
-    else:
-        form = GuestForm(instance=guest)
+    if start_date:
+        reservations = reservations.filter(start_date__date__gte=start_date)
+    if end_date:
+        reservations = reservations.filter(start_date__date__lte=end_date)
 
-    return render(request, 'core/modals/edit_guest.html', {'form': form, 'guest': guest})
+    report_data = reservations.values('guest__company__name') \
+        .annotate(total=Count('id')).order_by('-total')
+
+    return render(request, 'core/reports/occupancy.html', {
+        'report_data': report_data,
+        'total_guests': reservations.count(),
+        'start_date': start_date,
+        'end_date': end_date,
+    })
+
+
+@login_required
+def free_beds_report(request):
+    """ Relatório 2: Vagas em Quartos Ocupados (Otimização) """
+    companies = Company.objects.all()
+    report_data = []
+
+    for company in companies:
+        occupied_rooms = Room.objects.filter(
+            beds__reservations__guest__company=company,
+            beds__reservations__status='ACTIVE'
+        ).distinct().prefetch_related('beds')
+
+        available_slots = []
+        for room in occupied_rooms:
+            empty_beds = room.beds.exclude(reservations__status__in=['ACTIVE', 'PRE'])
+            if empty_beds.exists():
+                available_slots.append({'room': room, 'beds': list(empty_beds)})
+
+        if available_slots:
+            total_free = sum(len(item['beds']) for item in available_slots)
+            report_data.append({
+                'company': company,
+                'slots': available_slots,
+                'total_free': total_free
+            })
+
+    return render(request, 'core/reports/free_beds.html', {'report_data': report_data})
+
+
+@login_required
+def meal_report(request):
+    """ Relatório 3: Histórico de Refeições com CSV """
+    meals = Meal.objects.all().select_related('company').order_by('-created_at')
+    companies = Company.objects.all()
+
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    company_id = request.GET.get('company')
+
+    if start_date: meals = meals.filter(created_at__date__gte=start_date)
+    if end_date: meals = meals.filter(created_at__date__lte=end_date)
+    if company_id: meals = meals.filter(company_id=company_id)
+
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = f'attachment; filename="refeicoes.csv"'
+        writer = csv.writer(response, delimiter=';')
+        writer.writerow(['Data', 'Hora', 'Tipo', 'Nome', 'Empresa', 'CPF'])
+        for meal in meals:
+            local_dt = timezone.localtime(meal.created_at)
+            writer.writerow([
+                local_dt.strftime('%d/%m/%Y'),
+                local_dt.strftime('%H:%M'),
+                meal.get_meal_type_display(),
+                meal.name.upper(),
+                meal.company.name.upper(),
+                meal.cpf or ''
+            ])
+        return response
+
+    return render(request, 'core/reports/meal_report.html', {
+        'meals': meals, 'companies': companies,
+        'start_date': start_date, 'end_date': end_date,
+        'selected_company': int(company_id) if company_id else None,
+        'total_meals': meals.count()
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)  # <--- SEGURANÇA: Só Admin
+def closing_report(request):
+    """ Relatório 4: Fechamento (Fatura) - Financeiro """
+    companies = Company.objects.all()
+    start_str = request.GET.get('start_date')
+    end_str = request.GET.get('end_date')
+    company_id = request.GET.get('company')
+    is_export = request.GET.get('export') == 'csv'
+    report_data = []
+
+    if start_str and end_str:
+        filter_start = datetime.strptime(start_str, '%Y-%m-%d').date()
+        filter_end = datetime.strptime(end_str, '%Y-%m-%d').date()
+
+        reservations = Reservation.objects.filter(
+            start_date__date__lte=filter_end
+        ).filter(
+            Q(end_date__date__gte=filter_start) | Q(end_date__isnull=True)
+        ).select_related('guest', 'guest__company')
+
+        if company_id:
+            reservations = reservations.filter(guest__company_id=company_id)
+
+        for res in reservations:
+            # Fuso Horário e Datas Efetivas
+            local_start_dt = timezone.localtime(res.start_date)
+            res_start = local_start_dt.date()
+            res_end = timezone.localtime(res.end_date).date() if res.end_date else filter_end
+
+            if res_start > filter_end or res_end < filter_start:
+                continue
+
+            effective_start = max(res_start, filter_start)
+            effective_end = min(res_end, filter_end)
+
+            days = (effective_end - effective_start).days + 1
+            if days < 0: days = 0
+
+            # Refeições
+            lunch_count = 0
+            dinner_count = 0
+            if res.guest.cpf:
+                all_meals = Meal.objects.filter(cpf=res.guest.cpf)
+                for meal in all_meals:
+                    meal_date = timezone.localtime(meal.created_at).date()
+                    if effective_start <= meal_date <= effective_end:
+                        if meal.meal_type == 'ALMOCO':
+                            lunch_count += 1
+                        elif meal.meal_type == 'JANTA':
+                            dinner_count += 1
+
+            if days > 0 or lunch_count > 0 or dinner_count > 0:
+                report_data.append({
+                    'cpf': res.guest.cpf,
+                    'name': res.guest.name.upper(),
+                    'company': res.guest.company.name.upper(),
+                    'days': days,
+                    'lunch': lunch_count,
+                    'dinner': dinner_count,
+                    'entry': effective_start,
+                    'exit': effective_end,
+                    'is_active': res.end_date is None
+                })
+
+    if is_export and report_data:
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = f'attachment; filename="fatura.csv"'
+        writer = csv.writer(response, delimiter=';')
+        writer.writerow(['CPF', 'NOME', 'EMPRESA', 'DIARIAS', 'ALMOCO', 'JANTAR', 'ENTRADA', 'SAIDA'])
+        for item in report_data:
+            writer.writerow([
+                item['cpf'] or '',
+                item['name'],
+                item['company'],
+                item['days'],
+                item['lunch'],
+                item['dinner'],
+                item['entry'].strftime('%d/%m/%Y'),
+                item['exit'].strftime('%d/%m/%Y')
+            ])
+        return response
+
+    return render(request, 'core/reports/closing_report.html', {
+        'companies': companies,
+        'report_data': report_data,
+        'start_date': start_str,
+        'end_date': end_str,
+        'selected_company': int(company_id) if company_id else None
+    })

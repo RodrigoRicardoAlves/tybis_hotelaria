@@ -8,38 +8,47 @@ Sistema de gestão hoteleira focado em **estadias de longa duração** (Long Sta
 
 ## 🚀 Sobre o Projeto
 
-O objetivo do Tybis Hotelaria é resolver a complexidade de alocar funcionários de diferentes empresas em quartos compartilhados, garantindo a segurança e a organização logística.
+O objetivo do Tybis Hotelaria é resolver a complexidade de alocar funcionários de diferentes empresas em quartos compartilhados, garantindo a segurança, organização logística e faturamento preciso.
 
 Diferente de hotéis turísticos tradicionais, este sistema foca em:
 * **Controle por Leito (Cama):** Gestão individual de camas dentro de um mesmo quarto.
 * **Regras de Convivência:** O sistema **impede automaticamente** que hóspedes de empresas diferentes sejam alocados no mesmo quarto.
-* **Gestão de Refeições:** Emissão e controle de tickets de alimentação (Almoço/Janta) com integração para impressoras térmicas.
+* **Otimização de Custos:** Relatórios inteligentes para preencher quartos parcialmente ocupados antes de abrir novos.
+* **Gestão de Refeições:** Emissão e controle de tickets (Almoço/Janta) com impressão térmica.
 
 ## 🛠️ Tecnologias Utilizadas
 
-* **Backend:** Python 3 + Django
-* **Frontend:** Bootstrap 5 (Responsivo) + **HTMX** (Para interações dinâmicas sem recarregar a página)
+* **Backend:** Python 3 + Django 6.0
+* **Frontend:** Bootstrap 5 (Responsivo) + **HTMX** (Interatividade sem recarregar a página)
 * **Banco de Dados:** SQLite (Padrão Django)
-* **Impressão:** Integração Win32 (GDI) para Windows e Simulação Mock para Linux.
+* **Servidor de Produção:** Waitress (WSGI)
+* **Impressão:** Integração nativa Win32 (GDI) para Windows e Simulação Mock para Linux.
 
 ## ✨ Funcionalidades Principais
 
-1.  **Mapa de Ocupação (Dashboard):**
-    * Visualização rápida de todos os quartos e status (Livre, Ocupado, Pré-reserva, Manutenção).
-    * Indicadores visuais de climatização (Ar Condicionado vs Ventilador).
+### 1. 🗺️ Dashboard Interativo
+* **Mapa em Tempo Real:** Visualização de todos os quartos com indicadores de climatização (Ar/Ventilador).
+* **Filtros Dinâmicos (HTMX):** Alterne instantaneamente entre quartos Livres, Ocupados, Pré-reserva e Manutenção com contadores atualizados.
 
-2.  **Gestão de Reservas:**
-    * Fluxo de Pré-reserva -> Check-in -> Checkout.
-    * Histórico detalhado de ações (logs de quem fez o que e quando).
-    * Controle de "Mala Guardada" para hóspedes ausentes temporariamente.
+### 2. 🛎️ Gestão de Reservas
+* **Fluxo Completo:** Pré-reserva -> Check-in -> Checkout.
+* **Edição Rápida:** Modais para editar dados do hóspede, trocar de quarto e confirmar check-in.
+* **Controle de Malas:** Indicador visual para hóspedes que deixaram pertences no hotel (Mala Guardada).
+* **Segurança:** Impede alocação de empresas diferentes no mesmo quarto.
 
-3.  **Controle de Empresas:**
-    * Cadastro de empresas parceiras.
-    * Validação automática de conflitos de alocação.
+### 3. 📊 Relatórios Gerenciais e Financeiros
+* **Ocupação Atual:** Quem está no hotel agora, agrupado por empresa.
+* **Camas Livres (Otimização):** Identifica vagas em quartos já ocupados para otimizar a alocação.
+* **Histórico de Refeições:** Listagem completa de tickets emitidos com filtros por data e empresa.
+* **Fechamento (Fatura):** Relatório financeiro avançado (Restrito a Admin) com:
+    * Cálculo de diárias inclusivas (considerando entrada e saída).
+    * Recorte preciso por período de faturamento.
+    * **Exportação para Excel (CSV):** Dados formatados e prontos para contabilidade.
 
-4.  **Refeitório:**
-    * Módulo específico para controle de Almoço e Janta.
-    * Impressão direta de tickets (compatível com impressoras térmicas como Bematech/Elgin em ambiente Windows).
+### 4. 🍽️ Refeitório
+* Impressão direta de tickets de Almoço e Janta.
+* Correção automática de fuso horário na impressão.
+* Associação automática ao CPF do hóspede.
 
 ## ⚙️ Instalação e Configuração
 
@@ -62,9 +71,7 @@ Siga os passos abaixo para rodar o projeto localmente:
 
 3.  **Instale as dependências:**
     ```bash
-    pip install django django-htmx widget-tweaks
-    # Se estiver no Windows e quiser imprimir:
-    pip install pywin32
+    pip install -r requirements.txt
     ```
 
 4.  **Prepare o Banco de Dados:**
@@ -74,29 +81,35 @@ Siga os passos abaixo para rodar o projeto localmente:
     ```
 
 5.  **Popule o Hotel (Comando Automático):**
-    Este comando cria automaticamente 96 quartos com 2 camas cada e a empresa padrão "Particular".
+    Este comando cria a estrutura inicial com 96 quartos (2 camas cada).
     ```bash
     python manage.py popular_hotel
     ```
 
-6.  **Crie um superusuário (para acessar o Admin):**
+6.  **Crie um Administrador:**
+    Necessário para acessar o relatório financeiro e o painel admin.
     ```bash
     python manage.py createsuperuser
     ```
 
 7.  **Inicie o Servidor:**
-    ```bash
-    python manage.py runserver
-    ```
+    * **Modo Desenvolvimento:**
+        ```bash
+        python manage.py runserver
+        ```
+    * **Modo Produção (Windows/Waitress):**
+        ```bash
+        python run_waitress.py
+        ```
 
 Acesse em: `http://127.0.0.1:8000/`
 
 ## 🤝 Créditos e Autoria
 
-* **Idealização e Supervisão:** Rodrigo Ricardo Alves
+* **Idealização e Regras de Negócio:** Rodrigo Ricardo Alves
 * **Desenvolvimento de Código:** Gemini (Google AI)
 
-Este projeto demonstra como a Inteligência Artificial pode atuar como um parceiro técnico eficaz (Pair Programmer), transformando requisitos de negócio em código funcional e bem estruturado.
+Este projeto demonstra o poder do desenvolvimento assistido por IA ("Pair Programming"), transformando requisitos complexos de negócio em um software funcional, seguro e escalável.
 
 ---
 📝 *Licença MIT - Uso livre para fins educacionais e comerciais.*

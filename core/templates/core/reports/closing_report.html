@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-secondary"><i class="bi bi-cash-coin"></i> Relatório de Fechamento</h3>
+            <p class="text-muted mb-0">Cálculo de diárias e refeições por período (Faturamento).</p>
+        </div>
+
+        {% if report_data %}
+        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-success shadow-sm">
+            <i class="bi bi-file-earmark-excel-fill"></i> Baixar Excel (CSV)
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm mb-4 border-0 bg-light">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Data Início (Fatura)</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Data Fim (Fatura)</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Empresa</label>
+                    <select name="company" class="form-select">
+                        <option value="">-- Todas --</option>
+                        {% for company in companies %}
+                            <option value="{{ company.id }}" {% if selected_company == company.id %}selected{% endif %}>
+                                {{ company.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calculator"></i> Calcular Fatura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if start_date and end_date %}
+        <div class="card shadow border-0">
+            <div class="card-body p-0">
+                <table class="table table-hover table-striped mb-0 align-middle text-center">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="text-start ps-4">CPF</th>
+                            <th class="text-start">Nome Completo</th>
+                            <th>Diárias</th>
+                            <th>Almoço</th>
+                            <th>Jantar</th>
+                            <th>Entrada (Cobrada)</th>
+                            <th>Saída (Cobrada)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in report_data %}
+                        <tr>
+                            <td class="text-start ps-4 font-monospace">{{ item.cpf|default:"--" }}</td>
+                            <td class="text-start fw-bold">
+                                {{ item.name }}
+                                {% if item.is_active %}
+                                    <span class="badge bg-info text-dark ms-1" style="font-size: 0.6em;">ATIVO</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-success fs-6">{{ item.days }}</span>
+                            </td>
+                            <td>{{ item.lunch }}</td>
+                            <td>{{ item.dinner }}</td>
+                            <td class="text-muted small">{{ item.entry|date:"d/m/Y" }}</td>
+                            <td class="text-muted small">{{ item.exit|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="py-5 text-muted">
+                                <i class="bi bi-search display-6 d-block mb-3"></i>
+                                Nenhum registro encontrado para este período/empresa.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle-fill me-2"></i> Selecione as datas acima para gerar o relatório.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-secondary"><i class="bi bi-egg-fried"></i> Relatório de Refeições</h3>
+            <span class="badge bg-secondary">{{ total_meals }} registros encontrados</span>
+        </div>
+
+        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Baixar CSV
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4 bg-light border-0">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Data Início</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Data Fim</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Empresa</label>
+                    <select name="company" class="form-select">
+                        <option value="">Todas</option>
+                        {% for company in companies %}
+                            <option value="{{ company.id }}" {% if selected_company == company.id %}selected{% endif %}>
+                                {{ company.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'meal_report' %}" class="btn btn-outline-secondary" title="Limpar">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Data/Hora</th>
+                        <th>Tipo</th>
+                        <th>Nome</th>
+                        <th>Empresa</th>
+                        <th>CPF</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for meal in meals %}
+                    <tr>
+                        <td class="ps-4 text-nowrap">{{ meal.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            {% if meal.meal_type == 'ALMOCO' %}
+                                <span class="badge bg-warning text-dark border border-warning">
+                                    <i class="bi bi-sun-fill"></i> Almoço
+                                </span>
+                            {% else %}
+                                <span class="badge bg-primary border border-primary-subtle">
+                                    <i class="bi bi-moon-stars-fill"></i> Janta
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ meal.name }}</td>
+                        <td>{{ meal.company.name }}</td>
+                        <td class="text-muted small">{{ meal.cpf|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4 d-block mb-3 opacity-50"></i>
+                            Nenhuma refeição encontrada neste período.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

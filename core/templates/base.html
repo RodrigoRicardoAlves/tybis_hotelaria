@@ -14,12 +14,11 @@
         <div class="container-fluid">
             <a class="navbar-brand" href="{% url 'dashboard' %}">🏨 Hotel Gestão</a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-
                 {% if user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
@@ -33,9 +32,41 @@
                             <i class="bi bi-egg-fried"></i> Refeições
                         </a>
                     </li>
-                    </ul>
 
-                <div class="d-flex align-items-center text-white gap-3 ms-auto mt-3 mt-lg-0">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{% url 'occupancy_report' %}">
+                                    <i class="bi bi-people-fill me-2"></i> Ocupação por Empresa
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'free_beds_report' %}">
+                                    <i class="bi bi-door-open me-2"></i> Camas Livres (Otimização)
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'meal_report' %}">
+                                    <i class="bi bi-egg-fried me-2"></i> Histórico de Refeições
+                                </a>
+                            </li>
+
+                            {% if user.is_staff %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'closing_report' %}">
+                                    <i class="bi bi-cash-coin me-2"></i> Fechamento (Fatura)
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                </ul>
+
+                <div class="d-flex align-items-center text-white gap-3 ms-auto">
                     <span>Olá, {{ user.username }}</span>
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
                         {% csrf_token %}
@@ -43,7 +74,6 @@
                     </form>
                 </div>
                 {% endif %}
-
             </div>
         </div>
     </nav>
@@ -54,17 +84,11 @@
 
     <div class="modal fade" id="mainModal" tabindex="-1">
         <div class="modal-dialog">
-            <div class="modal-content" id="modal-content">
-                </div>
+            <div class="modal-content" id="modal-content"></div>
         </div>
     </div>
 
-    <footer class="text-center py-3 mt-5 text-muted border-top">
-        <small>System by <strong>Gemini & Barba</strong> 🚀</small>
-    </footer>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
         document.body.addEventListener('showAlert', function(evt){
             alert(evt.detail.value);

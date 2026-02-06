@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="text-secondary"><i class="bi bi-bar-chart-fill"></i> Ocupação por Empresa</h3>
+            <p class="text-muted mb-0">Listagem de hóspedes ativos (sem checkout realizado).</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-outline-dark">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+    </div>
+
+    <div class="card shadow-sm mb-4 d-print-none">
+        <div class="card-body bg-light">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Data Início (Entrada)</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Data Fim (Entrada)</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|default:'' }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-filter"></i> Filtrar
+                    </button>
+                    <a href="{% url 'occupancy_report' %}" class="btn btn-outline-secondary" title="Limpar Filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped mb-0 align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Empresa</th>
+                        <th class="text-center" style="width: 150px;">Qtd. Hóspedes</th>
+                        <th class="text-end pe-4" style="width: 200px;">% do Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in report_data %}
+                    <tr>
+                        <td class="ps-4 fw-bold">{{ item.guest__company__name }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-primary fs-6">{{ item.total }}</span>
+                        </td>
+                        <td class="text-end pe-4 text-muted">
+                            {% widthratio item.total total_guests 100 %}%
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                            Nenhuma ocupação encontrada para os filtros selecionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if report_data %}
+                <tfoot class="table-secondary fw-bold">
+                    <tr>
+                        <td class="ps-4">TOTAL GERAL</td>
+                        <td class="text-center">{{ total_guests }}</td>
+                        <td class="text-end pe-4">100%</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
